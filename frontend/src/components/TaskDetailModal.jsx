@@ -1,8 +1,9 @@
+import { FormControl, MenuItem, Select } from '@mui/material';
 import { Send } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import api from '../api/client';
-import { formatDate, statusLabel } from '../utils/formatters';
+import { formatDate, taskStatuses } from '../utils/formatters';
 import Modal from './ui/Modal';
 import Skeleton from './ui/Skeleton';
 
@@ -70,11 +71,13 @@ export default function TaskDetailModal({ taskId, onClose, onStatusUpdated }) {
             <div className="mt-4 grid gap-3 sm:grid-cols-3">
               <div>
                 <label className="label">Status</label>
-                <select className="input" value={data.task.status} onChange={changeStatus} disabled={statusSaving}>
-                  <option value="todo">{statusLabel.todo}</option>
-                  <option value="in-progress">{statusLabel['in-progress']}</option>
-                  <option value="completed">{statusLabel.completed}</option>
-                </select>
+                <FormControl fullWidth size="small">
+                  <Select value={data.task.status} onChange={changeStatus} disabled={statusSaving}>
+                    {taskStatuses.map((status) => (
+                      <MenuItem key={status} value={status}>{status}</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
               </div>
               <div className="rounded-xl bg-slate-50 p-3 text-xs font-bold text-slate-500">
                 <span className="block uppercase tracking-wide text-slate-400">Priority</span>

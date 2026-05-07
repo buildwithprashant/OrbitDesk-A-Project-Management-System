@@ -1,6 +1,9 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
+import { FormControl, MenuItem, Select } from '@mui/material';
+import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod';
+import UserMultiSelect from './UserMultiSelect';
+import { taskStatuses } from '../utils/formatters';
 
 const toArray = (value) => (Array.isArray(value) ? value : value ? [value] : []);
 const stringArray = z.preprocess(toArray, z.array(z.string()));
@@ -10,13 +13,14 @@ const schema = z.object({
   description: z.string().optional(),
   project: z.string().min(1, 'Project is required'),
   priority: z.enum(['low', 'medium', 'high']),
-  status: z.enum(['todo', 'in-progress', 'completed']),
+  status: z.enum(taskStatuses),
   dueDate: z.string().min(1, 'Due date is required'),
   assignees: stringArray.optional()
 });
 
 export default function TaskForm({ projects = [], users = [], initialValues, onSubmit, saving }) {
   const {
+    control,
     register,
     handleSubmit,
     watch,
@@ -29,7 +33,7 @@ export default function TaskForm({ projects = [], users = [], initialValues, onS
       description: '',
       project: projects[0]?._id || '',
       priority: 'medium',
-      status: 'todo',
+      status: 'Pending',
       dueDate: '',
       assignees: []
     }
@@ -83,15 +87,19 @@ export default function TaskForm({ projects = [], users = [], initialValues, onS
               No users available.
             </p>
           ) : (
-            <div className="grid max-h-44 gap-2 overflow-auto rounded-xl border border-slate-200 bg-slate-50 p-3">
-              {users.map((user) => (
-                <label key={user._id} className="flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-sm font-bold text-slate-600">
-                  <input type="checkbox" value={user._id} {...register('assignees')} />
-                  <span className="min-w-0 flex-1 truncate">{user.name}</span>
-                  <span className="text-xs capitalize text-slate-400">{user.role}</span>
-                </label>
-              ))}
-            </div>
+            <Controller
+              control={control}
+              name="assignees"
+              render={({ field }) => (
+                <UserMultiSelect
+                  users={users}
+                  value={field.value}
+                  onChange={field.onChange}
+                  label="Assignees"
+                  placeholder="Search and select users"
+                />
+              )}
+            />
           )}
           <p className="mt-2 text-xs font-bold text-slate-400">{selectedAssignees.length} selected</p>
         </div>
@@ -99,11 +107,19 @@ export default function TaskForm({ projects = [], users = [], initialValues, onS
       <div className="grid gap-4 sm:grid-cols-3">
         <div>
           <label className="label">Status</label>
-          <select className="input" {...register('status')}>
-            <option value="todo">Todo</option>
-            <option value="in-progress">In Progress</option>
-            <option value="completed">Completed</option>
-          </select>
+          <Controller
+            control={control}
+            name="status"
+            render={({ field }) => (
+              <FormControl fullWidth size="small">
+                <Select {...field}>
+                  {taskStatuses.map((status) => (
+                    <MenuItem key={status} value={status}>{status}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            )}
+          />
         </div>
         <div>
           <label className="label">Priority</label>

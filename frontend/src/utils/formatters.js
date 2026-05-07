@@ -1,12 +1,14 @@
 import { format, isPast, parseISO } from 'date-fns';
 
 export const formatDate = (value) => (value ? format(parseISO(value), 'MMM d, yyyy') : 'No date');
-export const isOverdue = (date, status) => status !== 'completed' && date && isPast(parseISO(date));
+export const isOverdue = (date, status) => status !== 'Completed' && date && isPast(parseISO(date));
+
+export const taskStatuses = ['Pending', 'In Progress', 'Completed'];
 
 export const statusLabel = {
-  todo: 'Todo',
-  'in-progress': 'In Progress',
-  completed: 'Completed'
+  Pending: 'Pending',
+  'In Progress': 'In Progress',
+  Completed: 'Completed'
 };
 
 export const priorityClass = {
@@ -16,7 +18,7 @@ export const priorityClass = {
 };
 
 export const statusClass = {
-  todo: 'bg-slate-100 text-slate-700',
-  'in-progress': 'bg-blue-50 text-blue-700',
-  completed: 'bg-emerald-50 text-emerald-700'
+  Pending: 'bg-slate-100 text-slate-700',
+  'In Progress': 'bg-blue-50 text-blue-700',
+  Completed: 'bg-emerald-50 text-emerald-700'
 };

@@ -53,8 +53,17 @@ export default function Projects() {
               <div className="mb-5 h-2 w-20 rounded-full" style={{ background: project.color }} />
               <h2 className="text-xl font-black text-ink">{project.name}</h2>
               <p className="mt-2 line-clamp-3 text-sm leading-6 text-slate-500">{project.description || 'No project description yet.'}</p>
-              <div className="mt-5 flex items-center justify-between text-xs font-bold text-slate-500">
-                <span>{project.members?.length || 0} members</span>
+              <div className="mt-5 flex items-center justify-between gap-3 text-xs font-bold text-slate-500">
+                <div className="flex items-center gap-2">
+                  <div className="flex -space-x-2">
+                    {project.members?.slice(0, 3).map((member) => (
+                      <div key={member._id} className="grid h-7 w-7 place-items-center rounded-full border-2 border-white text-[11px] font-black text-white" style={{ background: member.avatarColor }}>
+                        {member.name.charAt(0)}
+                      </div>
+                    ))}
+                  </div>
+                  <span>{project.members?.length || 0} members</span>
+                </div>
                 <span>Due {formatDate(project.deadline)}</span>
               </div>
             </Link>

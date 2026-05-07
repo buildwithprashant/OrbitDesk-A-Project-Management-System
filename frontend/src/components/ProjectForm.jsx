@@ -1,6 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod';
+import UserMultiSelect from './UserMultiSelect';
 
 const toArray = (value) => (Array.isArray(value) ? value : value ? [value] : []);
 const stringArray = z.preprocess(toArray, z.array(z.string()));
@@ -15,6 +16,7 @@ const schema = z.object({
 
 export default function ProjectForm({ initialValues, users = [], onSubmit, saving }) {
   const {
+    control,
     register,
     handleSubmit,
     watch,
@@ -64,15 +66,19 @@ export default function ProjectForm({ initialValues, users = [], onSubmit, savin
               </button>
             </div>
           </div>
-          <div className="grid max-h-44 gap-2 overflow-auto rounded-xl border border-slate-200 bg-slate-50 p-3 sm:grid-cols-2">
-            {users.map((user) => (
-              <label key={user._id} className="flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-sm font-bold text-slate-600">
-                <input type="checkbox" value={user._id} {...register('members')} />
-                <span className="min-w-0 flex-1 truncate">{user.name}</span>
-                <span className="text-xs capitalize text-slate-400">{user.role}</span>
-              </label>
-            ))}
-          </div>
+          <Controller
+            control={control}
+            name="members"
+            render={({ field }) => (
+              <UserMultiSelect
+                users={users}
+                value={field.value}
+                onChange={field.onChange}
+                label="Project members"
+                placeholder="Search and select users"
+              />
+            )}
+          />
           <p className="mt-2 text-xs font-bold text-slate-400">{selectedMembers.length} selected</p>
         </div>
       )}

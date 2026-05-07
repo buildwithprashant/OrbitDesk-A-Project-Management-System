@@ -5,6 +5,7 @@ const {
   getProject,
   updateProject,
   deleteProject,
+  listMembers,
   addMembers,
   removeMember,
   analytics
@@ -29,6 +30,7 @@ router
   .get(validate(projectIdSchema), getProject)
   .patch(authorize('manager', 'admin'), validate(updateProjectSchema), updateProject)
   .delete(authorize('admin'), validate(projectIdSchema), deleteProject);
+router.get('/:id/members', authorize('manager', 'admin'), validate(projectIdSchema), listMembers);
 router.patch('/:id/members', authorize('manager', 'admin'), validate(membersSchema), addMembers);
 router.delete(
   '/:id/members/:userId',

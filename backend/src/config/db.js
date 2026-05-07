@@ -14,6 +14,9 @@ const connectDB = async () => {
     const Task = require('../models/Task');
     const Project = require('../models/Project');
     await User.updateMany({ role: 'member' }, { role: 'user' });
+    await Task.updateMany({ status: 'todo' }, { status: 'Pending' });
+    await Task.updateMany({ status: 'in-progress' }, { status: 'In Progress' });
+    await Task.updateMany({ status: 'completed' }, { status: 'Completed' });
     const assignedTasks = await Task.find({ assignees: { $exists: true, $ne: [] } }).select('project assignees');
     await Promise.all(
       assignedTasks.map((task) =>

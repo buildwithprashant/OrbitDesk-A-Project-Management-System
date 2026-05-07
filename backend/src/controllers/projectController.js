@@ -98,6 +98,21 @@ const deleteProject = asyncHandler(async (req, res) => {
   res.status(200).json({ message: 'Project and related tasks deleted' });
 });
 
+const listMembers = asyncHandler(async (req, res) => {
+  const filter = await visibleProjectFilter(req.user);
+  const project = await Project.findOne({ _id: req.params.id, ...filter }).populate(
+    'members',
+    'name email role title avatarColor'
+  );
+
+  if (!project) {
+    res.status(404);
+    throw new Error('Project not found');
+  }
+
+  res.status(200).json(project.members);
+});
+
 const addMembers = asyncHandler(async (req, res) => {
   const project = await Project.findById(req.params.id);
   if (!project) {
@@ -137,7 +152,7 @@ const analytics = asyncHandler(async (req, res) => {
   const projectIds = projects.map((project) => project._id);
   const taskFilter = canSeeEverything(req.user) ? {} : { assignees: req.user._id };
 
-  const [tasks, statusGroups, recent] = await Promise.all([
+  const [tasks, statusGroups, recent, projectCards] = await Promise.all([
     Task.find({ project: { $in: projectIds }, ...taskFilter }),
     Task.aggregate([
       { $match: { project: { $in: projectIds }, ...taskFilter } },
@@ -147,17 +162,24 @@ const analytics = asyncHandler(async (req, res) => {
       .populate('project', 'name color')
       .populate('assignees', 'name avatarColor')
       .sort({ updatedAt: -1 })
-      .limit(8)
+      .limit(8),
+    Project.find({ _id: { $in: projectIds } })
+      .populate('members', 'name email role title avatarColor')
+      .sort({ updatedAt: -1 })
+      .limit(6)
   ]);
 
   const now = new Date();
   res.status(200).json({
     totalProjects: projects.length,
     totalTasks: tasks.length,
-    completedTasks: tasks.filter((task) => task.status === 'completed').length,
-    overdueTasks: tasks.filter((task) => task.status !== 'completed' && task.dueDate < now).length,
+    pendingTasks: tasks.filter((task) => task.status === 'Pending').length,
+    inProgressTasks: tasks.filter((task) => task.status === 'In Progress').length,
+    completedTasks: tasks.filter((task) => task.status === 'Completed').length,
+    overdueTasks: tasks.filter((task) => task.status !== 'Completed' && task.dueDate < now).length,
     statusGroups,
-    recent
+    recent,
+    projects: projectCards
   });
 });
 
@@ -167,6 +189,7 @@ module.exports = {
   getProject,
   updateProject,
   deleteProject,
+  listMembers,
   addMembers,
   removeMember,
   analytics

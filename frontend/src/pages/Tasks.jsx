@@ -11,11 +11,11 @@ import PageTransition from '../components/ui/PageTransition';
 import Skeleton from '../components/ui/Skeleton';
 import { useAuth } from '../context/AuthContext';
 import useFetch from '../hooks/useFetch';
-import { statusLabel } from '../utils/formatters';
+import { statusLabel, taskStatuses } from '../utils/formatters';
 
 export default function Tasks() {
   const { canManageWork } = useAuth();
-  const { data: tasks = [], loading, refetch } = useFetch('/tasks', { initialData: [] });
+  const { data: tasks = [], setData: setTasks, loading, refetch } = useFetch('/tasks', { initialData: [] });
   const { data: projects = [] } = useFetch('/projects', { initialData: [] });
   const { data: users = [] } = useFetch('/users', { initialData: [] });
   const [open, setOpen] = useState(false);
@@ -27,6 +27,10 @@ export default function Tasks() {
     () => (filter === 'all' ? tasks : tasks.filter((task) => task.status === filter)),
     [tasks, filter]
   );
+
+  const updateTaskInState = (updatedTask) => {
+    setTasks((current) => current.map((task) => (task._id === updatedTask._id ? updatedTask : task)));
+  };
 
   const createTask = async (values) => {
     setSaving(true);
@@ -43,11 +47,15 @@ export default function Tasks() {
   };
 
   const changeStatus = async (taskId, status) => {
+    const previous = tasks;
+    setTasks((current) => current.map((task) => (task._id === taskId ? { ...task, status } : task)));
+
     try {
-      await api.patch(`/tasks/${taskId}/status`, { status });
+      const response = await api.patch(`/tasks/${taskId}/status`, { status });
+      updateTaskInState(response.data);
       toast.success('Status updated');
-      refetch();
     } catch (error) {
+      setTasks(previous);
       toast.error(error.message || 'Could not update status');
     }
   };
@@ -62,7 +70,7 @@ export default function Tasks() {
         {canManageWork && <button className="btn-primary" onClick={() => setOpen(true)}><Plus size={18} /> New task</button>}
       </div>
       <div className="mb-5 flex flex-wrap gap-2">
-        {['all', 'todo', 'in-progress', 'completed'].map((item) => (
+        {['all', ...taskStatuses].map((item) => (
           <button
             key={item}
             onClick={() => setFilter(item)}
@@ -86,7 +94,7 @@ export default function Tasks() {
           <TaskForm projects={projects} users={users} onSubmit={createTask} saving={saving} />
         </Modal>
       )}
-      {selectedTask && <TaskDetailModal taskId={selectedTask._id} onClose={() => setSelectedTask(null)} onStatusUpdated={refetch} />}
+      {selectedTask && <TaskDetailModal taskId={selectedTask._id} onClose={() => setSelectedTask(null)} onStatusUpdated={updateTaskInState} />}
     </PageTransition>
   );
 }

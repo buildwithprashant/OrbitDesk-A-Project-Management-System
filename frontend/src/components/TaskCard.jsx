@@ -1,13 +1,16 @@
+import { FormControl, MenuItem, Select } from '@mui/material';
 import { CalendarDays, MessageSquare } from 'lucide-react';
 import Badge from './ui/Badge';
-import { formatDate, isOverdue, priorityClass, statusClass, statusLabel } from '../utils/formatters';
+import { formatDate, isOverdue, priorityClass, statusClass, statusLabel, taskStatuses } from '../utils/formatters';
 
 export default function TaskCard({ task, onStatusChange, onOpen, compact = false }) {
+  const completed = task.status === 'Completed';
+
   return (
-    <article className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-premium">
+    <article className={`rounded-2xl border p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-premium ${completed ? 'border-emerald-100 bg-emerald-50/60' : 'border-slate-200 bg-white'}`}>
       <div className="mb-3 flex items-start justify-between gap-3">
         <button className="text-left" onClick={() => onOpen?.(task)} type="button">
-          <h3 className="font-extrabold text-ink">{task.title}</h3>
+          <h3 className={`font-extrabold text-ink ${completed ? 'line-through decoration-emerald-500/60' : ''}`}>{task.title}</h3>
           <p className="mt-1 line-clamp-2 text-sm text-slate-500">{task.description || 'No description added.'}</p>
         </button>
         <Badge className={priorityClass[task.priority]}>{task.priority}</Badge>
@@ -36,11 +39,17 @@ export default function TaskCard({ task, onStatusChange, onOpen, compact = false
           )}
           <div className="ml-auto flex items-center gap-2">
             {onStatusChange && (
-              <select className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-600" value={task.status} onChange={(event) => onStatusChange(task._id, event.target.value)}>
-                <option value="todo">Todo</option>
-                <option value="in-progress">In Progress</option>
-                <option value="completed">Completed</option>
-              </select>
+              <FormControl size="small" sx={{ minWidth: compact ? 136 : 150 }}>
+                <Select
+                  value={task.status}
+                  onChange={(event) => onStatusChange(task._id, event.target.value)}
+                  sx={{ backgroundColor: 'white', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 700 }}
+                >
+                  {taskStatuses.map((status) => (
+                    <MenuItem key={status} value={status}>{status}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
             )}
             {onOpen && <button className="text-xs font-black text-pine" onClick={() => onOpen(task)} type="button">Details</button>}
           </div>

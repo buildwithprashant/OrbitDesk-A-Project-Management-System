@@ -42,7 +42,7 @@ export default function Landing() {
                   <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-bold">Live sprint</span>
                 </div>
                 <div className="grid gap-4 md:grid-cols-3">
-                  {['Todo', 'In Progress', 'Completed'].map((column, index) => (
+                  {['Pending', 'In Progress', 'Completed'].map((column, index) => (
                     <div key={column} className="rounded-2xl bg-white/10 p-3">
                       <p className="mb-3 text-sm font-bold text-white/70">{column}</p>
                       {[0, 1, 2].slice(0, index + 1).map((item) => (

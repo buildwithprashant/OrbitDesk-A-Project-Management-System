@@ -5,22 +5,25 @@ import { useNavigate, useParams } from 'react-router-dom';
 import api from '../api/client';
 import TaskCard from '../components/TaskCard';
 import TaskDetailModal from '../components/TaskDetailModal';
+import UserMultiSelect from '../components/UserMultiSelect';
 import Badge from '../components/ui/Badge';
 import EmptyState from '../components/ui/EmptyState';
+import Modal from '../components/ui/Modal';
 import PageTransition from '../components/ui/PageTransition';
 import Skeleton from '../components/ui/Skeleton';
 import { useAuth } from '../context/AuthContext';
 import useFetch from '../hooks/useFetch';
-import { formatDate } from '../utils/formatters';
+import { formatDate, taskStatuses } from '../utils/formatters';
 
 export default function ProjectDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { isAdmin, canManageWork } = useAuth();
-  const { data, loading, refetch } = useFetch(`/projects/${id}`);
+  const { data, setData, loading, refetch } = useFetch(`/projects/${id}`);
   const { data: users = [] } = useFetch('/users', { initialData: [] });
   const [selectedTask, setSelectedTask] = useState(null);
   const [membersToAdd, setMembersToAdd] = useState([]);
+  const [addMembersOpen, setAddMembersOpen] = useState(false);
 
   const availableUsers = useMemo(() => {
     const memberIds = new Set(data?.project?.members?.map((member) => member._id) || []);
@@ -29,12 +32,34 @@ export default function ProjectDetails() {
 
   const availableUserIds = useMemo(() => availableUsers.map((user) => user._id), [availableUsers]);
 
+  const updateTaskInState = (updatedTask) => {
+    setData((current) =>
+      current
+        ? {
+            ...current,
+            tasks: current.tasks.map((task) => (task._id === updatedTask._id ? updatedTask : task))
+          }
+        : current
+    );
+  };
+
   const changeStatus = async (taskId, status) => {
+    const previous = data;
+    setData((current) =>
+      current
+        ? {
+            ...current,
+            tasks: current.tasks.map((task) => (task._id === taskId ? { ...task, status } : task))
+          }
+        : current
+    );
+
     try {
-      await api.patch(`/tasks/${taskId}/status`, { status });
+      const response = await api.patch(`/tasks/${taskId}/status`, { status });
+      updateTaskInState(response.data);
       toast.success('Task updated');
-      refetch();
     } catch (error) {
+      setData(previous);
       toast.error(error.message || 'Could not update task');
     }
   };
@@ -54,6 +79,7 @@ export default function ProjectDetails() {
       await api.patch(`/projects/${id}/members`, { members: membersToAdd });
       toast.success(membersToAdd.length === 1 ? 'Member added to project' : 'Members added to project');
       setMembersToAdd([]);
+      setAddMembersOpen(false);
       refetch();
     } catch (error) {
       toast.error(error.message || 'Could not add members');
@@ -70,12 +96,6 @@ export default function ProjectDetails() {
     } catch (error) {
       toast.error(error.message || 'Could not remove member');
     }
-  };
-
-  const toggleMemberToAdd = (userId) => {
-    setMembersToAdd((current) =>
-      current.includes(userId) ? current.filter((id) => id !== userId) : [...current, userId]
-    );
   };
 
   if (loading) return <PageTransition><Skeleton className="h-96" /></PageTransition>;
@@ -104,73 +124,61 @@ export default function ProjectDetails() {
             <p className="text-sm text-slate-500">People in this project can be assigned work and track project tasks.</p>
           </div>
           {canManageWork && (
-            <form className="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 sm:w-96" onSubmit={addMember}>
-              <div className="mb-2 flex items-center justify-between gap-3">
-                <span className="text-xs font-black uppercase tracking-wide text-slate-500">Add access</span>
-                {availableUsers.length > 0 && (
-                  <div className="flex items-center gap-2 text-xs font-bold">
-                    <button className="text-pine" type="button" onClick={() => setMembersToAdd(availableUserIds)}>
-                      All
-                    </button>
-                    <button className="text-slate-400" type="button" onClick={() => setMembersToAdd([])}>
-                      Clear
-                    </button>
-                  </div>
-                )}
-              </div>
-              {availableUsers.length === 0 ? (
-                <p className="rounded-lg bg-white p-3 text-sm font-semibold text-slate-500">Every active user already has access.</p>
-              ) : (
-                <>
-                  <div className="grid max-h-36 gap-2 overflow-auto">
-                    {availableUsers.map((user) => (
-                      <label key={user._id} className="flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-sm font-bold text-slate-600">
-                        <input
-                          type="checkbox"
-                          checked={membersToAdd.includes(user._id)}
-                          onChange={() => toggleMemberToAdd(user._id)}
-                        />
-                        <span className="min-w-0 flex-1 truncate">{user.name}</span>
-                        <span className="text-xs capitalize text-slate-400">{user.role}</span>
-                      </label>
-                    ))}
-                  </div>
-                  <button className="btn-primary mt-3 w-full" disabled={membersToAdd.length === 0} aria-label="Add members">
-                    <Plus size={18} /> Add selected
-                  </button>
-                </>
-              )}
-            </form>
+            <button className="btn-primary" onClick={() => setAddMembersOpen(true)} disabled={availableUsers.length === 0}>
+              <Plus size={18} /> Add members
+            </button>
           )}
         </div>
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {project.members.map((member) => (
-            <div key={member._id} className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 p-3">
-              <div className="flex items-center gap-3">
-                <div className="grid h-10 w-10 place-items-center rounded-full text-sm font-black text-white" style={{ background: member.avatarColor }}>
-                  {member.name.charAt(0)}
-                </div>
-                <div>
-                  <p className="font-black text-ink">{member.name}</p>
-                  <p className="text-xs font-bold capitalize text-slate-500">{member.role}</p>
-                </div>
-              </div>
-              {canManageWork && member._id !== project.owner?._id && (
-                <button className="rounded-xl p-2 text-slate-400 transition hover:bg-white hover:text-rose-600" onClick={() => removeMember(member._id)} aria-label="Remove member">
-                  <UserMinus size={18} />
-                </button>
-              )}
-            </div>
-          ))}
+        <div className="overflow-hidden rounded-xl border border-slate-200">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-slate-50 text-xs font-black uppercase tracking-wide text-slate-500">
+              <tr>
+                <th className="px-4 py-3">Name</th>
+                <th className="hidden px-4 py-3 md:table-cell">Email</th>
+                <th className="px-4 py-3">Role</th>
+                {canManageWork && <th className="px-4 py-3 text-right">Remove</th>}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-200 bg-white">
+              {project.members.map((member) => (
+                <tr key={member._id}>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      <div className="grid h-9 w-9 place-items-center rounded-full text-xs font-black text-white" style={{ background: member.avatarColor }}>
+                        {member.name.charAt(0)}
+                      </div>
+                      <div>
+                        <p className="font-black text-ink">{member.name}</p>
+                        <p className="text-xs text-slate-400 md:hidden">{member.email}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="hidden px-4 py-3 text-slate-500 md:table-cell">{member.email}</td>
+                  <td className="px-4 py-3">
+                    <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black capitalize text-slate-600">{member.role}</span>
+                  </td>
+                  {canManageWork && (
+                    <td className="px-4 py-3 text-right">
+                      {member._id !== project.owner?._id && (
+                        <button className="rounded-xl p-2 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600" onClick={() => removeMember(member._id)} aria-label="Remove member">
+                          <UserMinus size={18} />
+                        </button>
+                      )}
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </section>
       {tasks.length === 0 ? (
         <EmptyState title="No tasks in this project" message="Create tasks from the Tasks page and attach them to this project." />
       ) : (
         <div className="grid gap-4 lg:grid-cols-3">
-          {['todo', 'in-progress', 'completed'].map((status) => (
+          {taskStatuses.map((status) => (
             <section key={status} className="rounded-2xl border border-slate-200 bg-white/60 p-4">
-              <h2 className="mb-4 text-sm font-black uppercase tracking-wide text-slate-500">{status.replace('-', ' ')}</h2>
+              <h2 className="mb-4 text-sm font-black uppercase tracking-wide text-slate-500">{status}</h2>
               <div className="grid gap-3">
                 {tasks.filter((task) => task.status === status).map((task) => (
                   <TaskCard key={task._id} task={task} onStatusChange={changeStatus} onOpen={setSelectedTask} />
@@ -180,7 +188,34 @@ export default function ProjectDetails() {
           ))}
         </div>
       )}
-      {selectedTask && <TaskDetailModal taskId={selectedTask._id} onClose={() => setSelectedTask(null)} onStatusUpdated={refetch} />}
+      {addMembersOpen && (
+        <Modal title="Add project members" onClose={() => setAddMembersOpen(false)}>
+          <form className="grid gap-4" onSubmit={addMember}>
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm font-semibold text-slate-500">{membersToAdd.length} selected</p>
+              <div className="flex items-center gap-2 text-xs font-bold">
+                <button className="text-pine" type="button" onClick={() => setMembersToAdd(availableUserIds)}>
+                  All
+                </button>
+                <button className="text-slate-400" type="button" onClick={() => setMembersToAdd([])}>
+                  Clear
+                </button>
+              </div>
+            </div>
+            <UserMultiSelect
+              users={availableUsers}
+              value={membersToAdd}
+              onChange={setMembersToAdd}
+              label="Project members"
+              placeholder="Search and select users"
+            />
+            <button className="btn-primary" disabled={membersToAdd.length === 0}>
+              <Plus size={18} /> Add selected members
+            </button>
+          </form>
+        </Modal>
+      )}
+      {selectedTask && <TaskDetailModal taskId={selectedTask._id} onClose={() => setSelectedTask(null)} onStatusUpdated={updateTaskInState} />}
     </PageTransition>
   );
 }
