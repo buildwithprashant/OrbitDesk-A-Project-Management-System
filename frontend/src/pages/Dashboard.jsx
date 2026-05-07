@@ -1,5 +1,7 @@
 import { AlertTriangle, CheckCircle2, FolderKanban, ListTodo } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
+import api from '../api/client';
 import PageTransition from '../components/ui/PageTransition';
 import Skeleton from '../components/ui/Skeleton';
 import StatCard from '../components/ui/StatCard';
@@ -10,8 +12,18 @@ import { statusLabel } from '../utils/formatters';
 const chartColors = { todo: '#64748b', 'in-progress': '#2563eb', completed: '#0f766e' };
 
 export default function Dashboard() {
-  const { data, loading, error } = useFetch('/projects/analytics/summary');
+  const { data, loading, error, refetch } = useFetch('/projects/analytics/summary');
   const chartData = data?.statusGroups?.map((item) => ({ name: statusLabel[item._id], value: item.count, color: chartColors[item._id] })) || [];
+
+  const changeStatus = async (taskId, status) => {
+    try {
+      await api.patch(`/tasks/${taskId}/status`, { status });
+      toast.success('Status updated');
+      refetch();
+    } catch (err) {
+      toast.error(err.message || 'Could not update status');
+    }
+  };
 
   return (
     <PageTransition>
@@ -47,7 +59,7 @@ export default function Dashboard() {
             <section className="glass-panel rounded-2xl p-5">
               <h2 className="mb-4 text-lg font-black text-ink">Recent activity</h2>
               <div className="grid gap-3">
-                {data.recent?.map((task) => <TaskCard key={task._id} task={task} compact />)}
+                {data.recent?.map((task) => <TaskCard key={task._id} task={task} compact onStatusChange={changeStatus} />)}
               </div>
             </section>
           </div>

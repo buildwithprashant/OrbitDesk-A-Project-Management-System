@@ -20,12 +20,14 @@ export default function ProjectDetails() {
   const { data, loading, refetch } = useFetch(`/projects/${id}`);
   const { data: users = [] } = useFetch('/users', { initialData: [] });
   const [selectedTask, setSelectedTask] = useState(null);
-  const [memberToAdd, setMemberToAdd] = useState('');
+  const [membersToAdd, setMembersToAdd] = useState([]);
 
   const availableUsers = useMemo(() => {
     const memberIds = new Set(data?.project?.members?.map((member) => member._id) || []);
     return users.filter((user) => !memberIds.has(user._id));
   }, [users, data]);
+
+  const availableUserIds = useMemo(() => availableUsers.map((user) => user._id), [availableUsers]);
 
   const changeStatus = async (taskId, status) => {
     try {
@@ -46,19 +48,21 @@ export default function ProjectDetails() {
 
   const addMember = async (event) => {
     event.preventDefault();
-    if (!memberToAdd) return;
+    if (membersToAdd.length === 0) return;
 
     try {
-      await api.patch(`/projects/${id}/members`, { members: [memberToAdd] });
-      toast.success('Member added to project');
-      setMemberToAdd('');
+      await api.patch(`/projects/${id}/members`, { members: membersToAdd });
+      toast.success(membersToAdd.length === 1 ? 'Member added to project' : 'Members added to project');
+      setMembersToAdd([]);
       refetch();
     } catch (error) {
-      toast.error(error.message || 'Could not add member');
+      toast.error(error.message || 'Could not add members');
     }
   };
 
   const removeMember = async (userId) => {
+    if (!confirm('Remove this member from the project and unassign their project tasks?')) return;
+
     try {
       await api.delete(`/projects/${id}/members/${userId}`);
       toast.success('Member removed from project');
@@ -66,6 +70,12 @@ export default function ProjectDetails() {
     } catch (error) {
       toast.error(error.message || 'Could not remove member');
     }
+  };
+
+  const toggleMemberToAdd = (userId) => {
+    setMembersToAdd((current) =>
+      current.includes(userId) ? current.filter((id) => id !== userId) : [...current, userId]
+    );
   };
 
   if (loading) return <PageTransition><Skeleton className="h-96" /></PageTransition>;
@@ -94,16 +104,42 @@ export default function ProjectDetails() {
             <p className="text-sm text-slate-500">People in this project can be assigned work and track project tasks.</p>
           </div>
           {canManageWork && (
-            <form className="flex w-full gap-2 sm:w-auto" onSubmit={addMember}>
-              <select className="input min-w-56" value={memberToAdd} onChange={(event) => setMemberToAdd(event.target.value)}>
-                <option value="">Select user</option>
-                {availableUsers.map((user) => (
-                  <option key={user._id} value={user._id}>{user.name} - {user.role}</option>
-                ))}
-              </select>
-              <button className="btn-primary" disabled={!memberToAdd} aria-label="Add member">
-                <Plus size={18} />
-              </button>
+            <form className="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 sm:w-96" onSubmit={addMember}>
+              <div className="mb-2 flex items-center justify-between gap-3">
+                <span className="text-xs font-black uppercase tracking-wide text-slate-500">Add access</span>
+                {availableUsers.length > 0 && (
+                  <div className="flex items-center gap-2 text-xs font-bold">
+                    <button className="text-pine" type="button" onClick={() => setMembersToAdd(availableUserIds)}>
+                      All
+                    </button>
+                    <button className="text-slate-400" type="button" onClick={() => setMembersToAdd([])}>
+                      Clear
+                    </button>
+                  </div>
+                )}
+              </div>
+              {availableUsers.length === 0 ? (
+                <p className="rounded-lg bg-white p-3 text-sm font-semibold text-slate-500">Every active user already has access.</p>
+              ) : (
+                <>
+                  <div className="grid max-h-36 gap-2 overflow-auto">
+                    {availableUsers.map((user) => (
+                      <label key={user._id} className="flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-sm font-bold text-slate-600">
+                        <input
+                          type="checkbox"
+                          checked={membersToAdd.includes(user._id)}
+                          onChange={() => toggleMemberToAdd(user._id)}
+                        />
+                        <span className="min-w-0 flex-1 truncate">{user.name}</span>
+                        <span className="text-xs capitalize text-slate-400">{user.role}</span>
+                      </label>
+                    ))}
+                  </div>
+                  <button className="btn-primary mt-3 w-full" disabled={membersToAdd.length === 0} aria-label="Add members">
+                    <Plus size={18} /> Add selected
+                  </button>
+                </>
+              )}
             </form>
           )}
         </div>
@@ -144,7 +180,7 @@ export default function ProjectDetails() {
           ))}
         </div>
       )}
-      {selectedTask && <TaskDetailModal taskId={selectedTask._id} onClose={() => setSelectedTask(null)} />}
+      {selectedTask && <TaskDetailModal taskId={selectedTask._id} onClose={() => setSelectedTask(null)} onStatusUpdated={refetch} />}
     </PageTransition>
   );
 }

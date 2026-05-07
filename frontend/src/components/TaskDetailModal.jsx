@@ -6,10 +6,11 @@ import { formatDate, statusLabel } from '../utils/formatters';
 import Modal from './ui/Modal';
 import Skeleton from './ui/Skeleton';
 
-export default function TaskDetailModal({ taskId, onClose }) {
+export default function TaskDetailModal({ taskId, onClose, onStatusUpdated }) {
   const [data, setData] = useState(null);
   const [body, setBody] = useState('');
   const [loading, setLoading] = useState(true);
+  const [statusSaving, setStatusSaving] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -40,6 +41,23 @@ export default function TaskDetailModal({ taskId, onClose }) {
     }
   };
 
+  const changeStatus = async (event) => {
+    const status = event.target.value;
+    if (!data?.task || status === data.task.status) return;
+
+    setStatusSaving(true);
+    try {
+      const response = await api.patch(`/tasks/${taskId}/status`, { status });
+      setData((current) => (current ? { ...current, task: response.data } : current));
+      onStatusUpdated?.(response.data);
+      toast.success('Status updated');
+    } catch (error) {
+      toast.error(error.message || 'Could not update status');
+    } finally {
+      setStatusSaving(false);
+    }
+  };
+
   return (
     <Modal title="Task detail" onClose={onClose}>
       {loading ? (
@@ -49,10 +67,23 @@ export default function TaskDetailModal({ taskId, onClose }) {
           <div>
             <h2 className="text-2xl font-black text-ink">{data.task.title}</h2>
             <p className="mt-2 text-sm leading-6 text-slate-500">{data.task.description || 'No description.'}</p>
-            <div className="mt-4 flex flex-wrap gap-2 text-xs font-bold text-slate-500">
-              <span>Status: {statusLabel[data.task.status]}</span>
-              <span>Priority: {data.task.priority}</span>
-              <span>Due: {formatDate(data.task.dueDate)}</span>
+            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+              <div>
+                <label className="label">Status</label>
+                <select className="input" value={data.task.status} onChange={changeStatus} disabled={statusSaving}>
+                  <option value="todo">{statusLabel.todo}</option>
+                  <option value="in-progress">{statusLabel['in-progress']}</option>
+                  <option value="completed">{statusLabel.completed}</option>
+                </select>
+              </div>
+              <div className="rounded-xl bg-slate-50 p-3 text-xs font-bold text-slate-500">
+                <span className="block uppercase tracking-wide text-slate-400">Priority</span>
+                <span className="mt-1 block capitalize text-slate-700">{data.task.priority}</span>
+              </div>
+              <div className="rounded-xl bg-slate-50 p-3 text-xs font-bold text-slate-500">
+                <span className="block uppercase tracking-wide text-slate-400">Due</span>
+                <span className="mt-1 block text-slate-700">{formatDate(data.task.dueDate)}</span>
+              </div>
             </div>
           </div>
           <section>

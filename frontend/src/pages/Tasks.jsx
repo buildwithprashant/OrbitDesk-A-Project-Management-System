@@ -86,7 +86,7 @@ export default function Tasks() {
           <TaskForm projects={projects} users={users} onSubmit={createTask} saving={saving} />
         </Modal>
       )}
-      {selectedTask && <TaskDetailModal taskId={selectedTask._id} onClose={() => setSelectedTask(null)} />}
+      {selectedTask && <TaskDetailModal taskId={selectedTask._id} onClose={() => setSelectedTask(null)} onStatusUpdated={refetch} />}
     </PageTransition>
   );
 }

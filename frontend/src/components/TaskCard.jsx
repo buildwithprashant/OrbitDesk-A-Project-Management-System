@@ -23,23 +23,27 @@ export default function TaskCard({ task, onStatusChange, onOpen, compact = false
           </span>
         )}
       </div>
-      {!compact && (
+      {(!compact || onStatusChange || onOpen) && (
         <div className="flex items-center justify-between">
-          <div className="flex -space-x-2">
-            {task.assignees?.slice(0, 3).map((user) => (
-              <div key={user._id} className="grid h-8 w-8 place-items-center rounded-full border-2 border-white text-xs font-black text-white" style={{ background: user.avatarColor }}>
-                {user.name.charAt(0)}
-              </div>
-            ))}
-          </div>
-          {onStatusChange && (
-            <select className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-600" value={task.status} onChange={(event) => onStatusChange(task._id, event.target.value)}>
-              <option value="todo">Todo</option>
-              <option value="in-progress">In Progress</option>
-              <option value="completed">Completed</option>
-            </select>
+          {!compact && (
+            <div className="flex -space-x-2">
+              {task.assignees?.slice(0, 3).map((user) => (
+                <div key={user._id} className="grid h-8 w-8 place-items-center rounded-full border-2 border-white text-xs font-black text-white" style={{ background: user.avatarColor }}>
+                  {user.name.charAt(0)}
+                </div>
+              ))}
+            </div>
           )}
-          {onOpen && <button className="text-xs font-black text-pine" onClick={() => onOpen(task)} type="button">Details</button>}
+          <div className="ml-auto flex items-center gap-2">
+            {onStatusChange && (
+              <select className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-600" value={task.status} onChange={(event) => onStatusChange(task._id, event.target.value)}>
+                <option value="todo">Todo</option>
+                <option value="in-progress">In Progress</option>
+                <option value="completed">Completed</option>
+              </select>
+            )}
+            {onOpen && <button className="text-xs font-black text-pine" onClick={() => onOpen(task)} type="button">Details</button>}
+          </div>
         </div>
       )}
     </article>

@@ -65,9 +65,21 @@ const updateProject = asyncHandler(async (req, res) => {
     throw new Error('Project not found');
   }
 
-  Object.assign(project, req.validated.body);
-  if (req.validated.body.members) {
-    project.members = Array.from(new Set([project.owner.toString(), ...req.validated.body.members]));
+  const { members, ...details } = req.validated.body;
+  Object.assign(project, details);
+
+  if (members !== undefined) {
+    const currentMembers = project.members.map(String);
+    const nextMembers = Array.from(new Set([project.owner.toString(), ...members]));
+    const removedMembers = currentMembers.filter((member) => !nextMembers.includes(member));
+    project.members = nextMembers;
+
+    if (removedMembers.length > 0) {
+      await Task.updateMany(
+        { project: project._id },
+        { $pull: { assignees: { $in: removedMembers } } }
+      );
+    }
   }
 
   await project.save();
@@ -105,7 +117,16 @@ const removeMember = asyncHandler(async (req, res) => {
     throw new Error('Project not found');
   }
 
+  if (project.owner.toString() === req.params.userId) {
+    res.status(400);
+    throw new Error('Project owner cannot be removed');
+  }
+
   project.members = project.members.filter((member) => member.toString() !== req.params.userId);
+  await Task.updateMany(
+    { project: project._id },
+    { $pull: { assignees: req.params.userId } }
+  );
   await project.save();
   res.status(200).json(await project.populate(projectPopulate));
 });
