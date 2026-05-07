@@ -16,11 +16,15 @@ const { notFound, errorHandler } = require('./middleware/errorMiddleware');
 
 const app = express();
 
+// FIX FOR RAILWAY / RENDER PROXY
+app.set('trust proxy', 1);
+
 app.use(helmet());
 app.use(compression());
 app.use(cookieParser());
 app.use(express.json({ limit: '10kb' }));
 app.use(mongoSanitize());
+
 app.use(
   cors({
     origin(origin, callback) {
@@ -40,7 +44,9 @@ app.use(
   })
 );
 
-if (process.env.NODE_ENV !== 'production') app.use(morgan('dev'));
+if (process.env.NODE_ENV !== 'production') {
+  app.use(morgan('dev'));
+}
 
 app.get('/', (req, res) => {
   res.status(200).json({
@@ -62,7 +68,10 @@ app.use(
 );
 
 app.get('/api/health', (req, res) => {
-  res.status(200).json({ status: 'ok', service: 'team-task-manager-api' });
+  res.status(200).json({
+    status: 'ok',
+    service: 'team-task-manager-api'
+  });
 });
 
 app.use('/api/auth', authRoutes);
